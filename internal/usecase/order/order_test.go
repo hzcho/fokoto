@@ -1,13 +1,16 @@
 package order
 
 import (
+	"errors"
 	"fokoto/internal/domain/model/item"
 	"fokoto/internal/domain/model/order"
 	itemmock "fokoto/internal/domain/repository/item/mocks"
 	ordermock "fokoto/internal/domain/repository/order/mocks"
+	"testing"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
-	"testing"
+	"github.com/stretchr/testify/require"
 )
 
 func TestOrderUseCase_Save(t *testing.T) {
@@ -67,4 +70,62 @@ func TestOrderUseCase_Get(t *testing.T) {
 
 	orderRepoMock.AssertExpectations(t)
 	itemRepoMock.AssertExpectations(t)
+}
+
+func TestOrderUseCase_Errors(t *testing.T) {
+	orderRepoMock := ordermock.NewOrderRepository(t)
+	itemRepoMock := itemmock.NewItemRepository(t)
+
+	orderUseCase := NewOrderUseCase(orderRepoMock, itemRepoMock)
+
+	cases := []struct {
+		name          string
+		ordr          order.Order
+		orderRepoErr  error
+		itemRepoErr   error
+		expErr        error
+	}{
+		{
+			name: "order repository error",
+			ordr: order.Order{
+				ID:          0,
+				Status:      1,
+				UserID:      0,
+				PaymentType: 1,
+			},
+			orderRepoErr: errors.New("order repository error"),
+			itemRepoErr:  nil,
+			expErr:       errors.New("order repository error"),
+		},
+		{
+			name: "item repository error",
+			ordr: order.Order{
+				ID:          1,
+				Status:      1,
+				UserID:      1,
+				PaymentType: 2,
+			},
+			orderRepoErr: nil,
+			itemRepoErr:  errors.New("item repository error"),
+			expErr:       errors.New("item repository error"),
+		},
+	}
+
+	for _, tCase := range cases {
+		t.Run(tCase.name, func(t *testing.T) {
+			orderRepoMock.
+				On("Save", tCase.ordr).
+				Once().
+				Return(nil, tCase.orderRepoErr)
+
+			itemRepoMock.
+				On("SaveAll", tCase.ordr.Items).
+				Return(nil, tCase.itemRepoErr)
+
+			_, err := orderUseCase.Save(tCase.ordr)
+
+			require.Error(t, err)
+			require.EqualError(t, err, tCase.expErr.Error())
+		})
+	}
 }

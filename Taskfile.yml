@@ -1,0 +1,7 @@
+version: '3'
+
+tasks:
+  mock:
+    cmds:
+      - go run github.com/vektra/mockery/v2@latest --name=ItemRepository --dir=./internal/domain/repository/item --output=./internal/domain/repository/item/mock1
+      - go run github.com/vektra/mockery/v2@latest --name=OrderRepository --dir=./internal/domain/repository/order --output=./internal/domain/repository/order/mock1
